@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Candy Crush Inspired Game</title>
+  <style>
+    /* Reset and Base Styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+      background: radial-gradient(circle at center, #ffd1dc, #ff9a9e);
+    }
+    button {
+      outline: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* Candy Falling Effect for Home Page Background */
+    #candy-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1; /* behind home page content */
+    }
+    .candy-fall {
+      position: absolute;
+      font-size: 3rem;
+      opacity: 0.9;
+      animation: dropCandy linear infinite;
+    }
+    @keyframes dropCandy {
+      0% { transform: translateY(-100px); }
+      100% { transform: translateY(110vh); }
+    }
+
+    /* Home Page Styling (Candy Crush Inspired) */
+    #home-page {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 20px;
+      min-height: 100vh;
+      background: linear-gradient(135deg, rgba(255,182,193,0.9), rgba(255,105,180,0.9));
+      color: #fff;
+      box-shadow: inset 0 0 50px rgba(0,0,0,0.2);
+    }
+    #home-page h1 {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+      text-shadow: 3px 3px 10px rgba(0,0,0,0.4);
+    }
+    #home-page p {
+      font-size: 1.25rem;
+      margin-bottom: 40px;
+    }
+    #playButton {
+      padding: 15px 30px;
+      font-size: 1.5rem;
+      border: 2px solid #fff;
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-radius: 50px;
+      transition: background 0.3s ease, transform 0.3s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    #playButton:hover {
+      background: rgba(255,255,255,0.3);
+      transform: scale(1.05);
+    }
+
+    /* Game Page Styling */
+    #game-page {
+      display: none;
+      padding: 20px;
+      max-width: 480px;
+      margin: 20px auto;
+      background: rgba(255,255,255,0.95);
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    /* Game Top Bar Styled like Candy Crush Header */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+      border: 3px solid #ff66a3;
+      border-radius: 15px;
+      background: linear-gradient(135deg, #ffe0e6, #ffc1cc);
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: #c2185b;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .target {
+      text-align: center;
+      font-size: 1.1rem;
+      margin-bottom: 15px;
+      padding: 8px;
+      border: 2px dashed #d6336c;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.85);
+      color: #880e4f;
+    }
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 3px;
+      background: rgba(255,255,255,0.98);
+      border: 4px solid #ff66a3;
+      border-radius: 16px;
+      padding: 5px;
+      position: relative;
+      aspect-ratio: 1;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .candy {
+      background: #fff;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.5rem;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+      position: relative;
+    }
+    .candy:hover {
+      transform: scale(1.05);
+    }
+    .dragging {
+      transform: scale(1.2);
+      z-index: 10;
+    }
+    @keyframes pop {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.5); opacity: 0; }
+    }
+    .cleared {
+      animation: pop 0.3s ease forwards;
+    }
+
+    /* End-of-Game: Candy Break and Fall Effect */
+    @keyframes candyBreak {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(150vh) rotate(720deg); opacity: 0; }
+    }
+    .break-out {
+      animation: candyBreak 1.5s ease-in forwards;
+    }
+
+    /* Modal Styles */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+      z-index: 150;
+    }
+    .modal.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal-content {
+      background: #fff;
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      animation: modalIn 0.5s ease-out;
+      max-width: 80%;
+    }
+    @keyframes modalIn {
+      from { transform: scale(0.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal-content h2 {
+      margin-bottom: 20px;
+      color: #d6336c;
+      font-size: 2rem;
+    }
+    .stars {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      color: #f7c02c;
+    }
+    .final-score {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    .modal-content button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background: #ff66a3;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .modal-content button:hover {
+      background: #e60073;
+    }
+
+    @media (max-width: 480px) {
+      #home-page h1 { font-size: 3rem; }
+      #home-page p { font-size: 1rem; }
+      #playButton { font-size: 1.25rem; padding: 12px 24px; }
+      .top-bar { font-size: 1rem; }
+      .target { font-size: 1rem; }
+      .candy { font-size: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Candy Falling Effect for Home Page -->
+  <div id="candy-background"></div>
+
+  <!-- Home Page -->
+  <div id="home-page">
+    <h1>Candy Crush</h1>
+    <p>Match colorful candies to score points and complete levels.</p>
+    <button id="playButton">Play Now</button>
+  </div>
+
+  <!-- Game Page -->
+  <div id="game-page">
+    <div class="top-bar">
+      <div id="score">Score: 0</div>
+      <div id="timer">Time: 3:00</div>
+    </div>
+    <div class="target" id="targetText"></div>
+    <div class="game-board" id="board"></div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <h2 id="modal-title"></h2>
+      <div class="stars" id="starRating"></div>
+      <div class="final-score" id="finalScore"></div>
+      <button id="restartButton">Play Again</button>
+    </div>
+  </div>
+
+  <!-- Audio -->
+  <audio id="popSound" preload="auto">
+    <source src="data:audio/mpeg;base64,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" type="audio/mpeg">
+  </audio>
+
+  <script>
+    /* --- Home Page Candy Falling Effect --- */
+    const candyBackground = document.getElementById('candy-background');
+    const candyEmojis = ["🍬", "🍭", "🍫", "🍩"];
+    const numCandies = 30;
+    function createCandyDrops() {
+      for (let i = 0; i < numCandies; i++) {
+        const candy = document.createElement("div");
+        candy.classList.add("candy-fall");
+        candy.textContent = candyEmojis[Math.floor(Math.random() * candyEmojis.length)];
+        candy.style.left = Math.random() * 100 + "vw";
+        candy.style.animationDuration = (4 + Math.random() * 6) + "s";
+        candy.style.animationDelay = Math.random() * 5 + "s";
+        candyBackground.appendChild(candy);
+      }
+    }
+    createCandyDrops();
+
+    /* --- Game & Navigation Elements --- */
+    const homePage = document.getElementById("home-page");
+    const gamePage = document.getElementById("game-page");
+    const playButton = document.getElementById("playButton");
+
+    playButton.addEventListener("click", () => {
+      homePage.style.display = "none";
+      candyBackground.style.display = "none";
+      gamePage.style.display = "block";
+      initGame();
+    });
+
+    const board = document.getElementById("board");
+    const scoreDisplay = document.getElementById("score");
+    const timerDisplay = document.getElementById("timer");
+    const targetText = document.getElementById("targetText");
+    const modal = document.getElementById("modal");
+    const modalTitle = document.getElementById("modal-title");
+    const starRatingEl = document.getElementById("starRating");
+    const finalScoreEl = document.getElementById("finalScore");
+    const restartButton = document.getElementById("restartButton");
+    const popSound = document.getElementById("popSound");
+
+    const width = 8;
+    const emojis = ["🍒", "🍋", "🍊", "🍏", "🫐", "🍑"];
+    let squares = [];
+    let score = 0;
+    let timer = 180;
+    let draggedIndex = null;
+    let isDragging = false;
+    let level = 1;
+
+    // Updated scoring system: 5 points per candy cleared.
+    function getLevelTarget() {
+      return 150 + (level - 1) * 100;
+    }
+    function getLevelTimer() {
+      return Math.max(180 - (level - 1) * 10, 60);
+    }
+
+    function initGame() {
+      score = 0;
+      timer = getLevelTimer();
+      scoreDisplay.textContent = `Score: ${score}`;
+      timerDisplay.textContent = `Time: ${formatTime(timer)}`;
+      targetText.textContent = `Level ${level}: Reach ${getLevelTarget()} Points to win`;
+      createBoard();
+      addListeners();
+      startTimer();
+    }
+
+    function createBoard() {
+      board.innerHTML = "";
+      squares = [];
+      for (let i = 0; i < width * width; i++) {
+        const square = document.createElement("div");
+        square.setAttribute("id", i);
+        square.classList.add("candy");
+        board.appendChild(square);
+        squares.push(square);
+      }
+      fillBoard();
+    }
+
+    function fillBoard() {
+      for (let i = 0; i < squares.length; i++) {
+        if (!squares[i].textContent) {
+          let newEmoji = "";
+          do {
+            newEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+          } while (
+            (i % width > 1 &&
+              squares[i - 1].textContent === newEmoji &&
+              squares[i - 2].textContent === newEmoji) ||
+            (i >= width * 2 &&
+              squares[i - width].textContent === newEmoji &&
+              squares[i - width * 2].textContent === newEmoji)
+          );
+          squares[i].textContent = newEmoji;
+        }
+      }
+    }
+
+    function addListeners() {
+      squares.forEach((square, index) => {
+        square.addEventListener('mousedown', e => startDrag(e, index));
+        square.addEventListener('touchstart', e => startDrag(e, index), { passive: false });
+      });
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('touchmove', drag, { passive: false });
+      document.addEventListener('mouseup', endDrag);
+      document.addEventListener('touchend', endDrag);
+    }
+
+    let startX, startY;
+    function startDrag(e, index) {
+      e.preventDefault();
+      isDragging = true;
+      draggedIndex = index;
+      squares[index].classList.add('dragging');
+      const touch = e.touches ? e.touches[0] : e;
+      startX = touch.clientX;
+      startY = touch.clientY;
+    }
+
+    function drag(e) {
+      if (!isDragging) return;
+      const touch = e.touches ? e.touches[0] : e;
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+      let targetIndex = null;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0 && draggedIndex % width < width - 1)
+          targetIndex = draggedIndex + 1;
+        else if (dx < 0 && draggedIndex % width > 0)
+          targetIndex = draggedIndex - 1;
+      } else {
+        if (dy > 0 && draggedIndex < width * (width - 1))
+          targetIndex = draggedIndex + width;
+        else if (dy < 0 && draggedIndex >= width)
+          targetIndex = draggedIndex - width;
+      }
+      if (targetIndex !== null) {
+        swap(draggedIndex, targetIndex);
+        if (hasMatch()) {
+          processMatches();
+        } else {
+          setTimeout(() => swap(draggedIndex, targetIndex), 200);
+        }
+        endDrag();
+      }
+    }
+
+    function endDrag() {
+      isDragging = false;
+      squares.forEach(sq => sq.classList.remove('dragging'));
+    }
+
+    function swap(i1, i2) {
+      const temp = squares[i1].textContent;
+      squares[i1].textContent = squares[i2].textContent;
+      squares[i2].textContent = temp;
+    }
+
+    function hasMatch() {
+      return findMatches().length > 0;
+    }
+
+    function findMatches() {
+      let ids = new Set();
+      for (let i = 0; i < width * width; i++) {
+        if (i % width > width - 3) continue;
+        const emoji = squares[i].textContent;
+        if (emoji && squares[i + 1].textContent === emoji && squares[i + 2].textContent === emoji) {
+          ids.add(i).add(i + 1).add(i + 2);
+        }
+      }
+      for (let i = 0; i < width * (width - 2); i++) {
+        const emoji = squares[i].textContent;
+        if (emoji && squares[i + width].textContent === emoji && squares[i + 2 * width].textContent === emoji) {
+          ids.add(i).add(i + width).add(i + 2 * width);
+        }
+      }
+      return [...ids];
+    }
+
+    function processMatches() {
+      const matches = findMatches();
+      if (matches.length === 0) return;
+      matches.forEach(i => {
+        squares[i].classList.add("cleared");
+        squares[i].textContent = "";
+      });
+      popSound.currentTime = 0;
+      popSound.play().catch(() => {});
+      // Award 5 points per candy cleared
+      matches.forEach(() => {
+        score += 5;
+      });
+      scoreDisplay.textContent = `Score: ${score}`;
+      if (score >= getLevelTarget()) {
+        // For win condition, trigger end-game candy break effect
+        setTimeout(() => endGame("You Win!"), 300);
+      }
+      setTimeout(() => {
+        squares.forEach(sq => sq.classList.remove("cleared"));
+        dropCandies();
+        fillBoard();
+        setTimeout(processMatches, 200);
+      }, 300);
+    }
+
+    function dropCandies() {
+      for (let col = 0; col < width; col++) {
+        for (let row = width - 1; row > 0; row--) {
+          let i = row * width + col;
+          let above = i - width;
+          if (squares[i].textContent === "") {
+            squares[i].textContent = squares[above].textContent;
+            squares[above].textContent = "";
+          }
+        }
+      }
+    }
+
+    function startTimer() {
+      let countdown = setInterval(() => {
+        timer--;
+        timerDisplay.textContent = `Time: ${formatTime(timer)}`;
+        if (timer <= 0) {
+          clearInterval(countdown);
+          setTimeout(() => endGame("Time's Up! Game Over"), 100);
+        }
+      }, 1000);
+    }
+
+    function formatTime(seconds) {
+      let min = Math.floor(seconds / 60);
+      let sec = seconds % 60;
+      return `${min}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    function getStarRating(score) {
+      let target = getLevelTarget();
+      if (score >= target + 30) return 3;
+      else if (score >= target) return 2;
+      else return 1;
+    }
+
+    /* --- End-of-Game Effects --- */
+    function animateBoardCandyBreak() {
+      squares.forEach(sq => {
+        if (sq.textContent !== "") {
+          sq.style.animationDelay = Math.random() + "s";
+          sq.classList.add("break-out");
+        }
+      });
+    }
+
+    function endGame(message) {
+      animateBoardCandyBreak();
+      setTimeout(() => {
+        showModal(message);
+      }, 1500);
+    }
+
+    function showModal(message) {
+      modalTitle.textContent = message;
+      let stars = getStarRating(score);
+      let starHTML = "";
+      for (let i = 0; i < 3; i++) {
+        starHTML += i < stars ? "★ " : "☆ ";
+      }
+      starRatingEl.textContent = starHTML;
+      finalScoreEl.textContent = `Final Score: ${score}`;
+      modal.classList.add("show");
+    }
+
+    restartButton.addEventListener("click", () => {
+      modal.classList.remove("show");
+      if (score >= getLevelTarget()) {
+        level++;
+      } else {
+        level = 1;
+      }
+      initGame();
+    });
+  </script>
+</body>
+</html>
